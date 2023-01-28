@@ -19,7 +19,7 @@ static class StatusExtensions
             Status.TotpGenerationFailure => "Failed to generate code",
             Status.EncryptionFailure => "Failed to encrypt secret",
             Status.DecryptionFailure => "Failed to decrypt secret",
-            Status.ConfigFileNotFound => "SteamGuard file not found or invalid",
+            Status.ConfigFileNotFound => "Config file not found or invalid",
             _ => "Unknown error"
         };
     }
