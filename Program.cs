@@ -2,6 +2,9 @@
 using SteamGuardTotp = SteamGuard.TOTP.SteamGuard;
 using SteamAuth.Utils;
 using System.Security.Cryptography;
+using TextCopy;
+using Ookii.CommandLine;
+using Ookii.CommandLine.Terminal;
 
 namespace SteamAuth;
 
@@ -10,23 +13,29 @@ class Program
     const string STEAMGUARD_FILE = "steamauth.json";
     private static readonly SteamGuardTotp steamGuard = new();
     private static readonly string steamGuardPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, STEAMGUARD_FILE);
+    private static readonly ConsoleWriter console = new();
 
-    private static int Main(string[] args)
+    private static int Main()
     {
-        var result = args.Length == 0 ? ProcessFile() : ProcessArgs(args);
+        var args = CommandLineParser.Parse<Arguments>() ?? new(isInvalid: true);
+        if (args.IsInvalid)
+        {
+            return (int)Status.InvalidArguments;
+        }
+
+        var result = string.IsNullOrWhiteSpace(args.Secret) ? ProcessFile() : ProcessArgs(args);
 
         if (result != Status.Success)
         {
-            Console.Error.WriteLine(result.GetMessage());
+            console.WriteLine(result.GetMessage(), TextFormat.ForegroundRed, TextFormat.BoldBright);
         }
 
         return (int)result;
     }
 
-    private static Status ProcessArgs(string[] args)
+    private static Status ProcessArgs(Arguments args)
     {
-        var secret = args[0];
-        var shouldSave = args.Length > 1 && args[1].Contains("-s", StringComparison.InvariantCultureIgnoreCase);
+        var secret = args.Secret ?? string.Empty;
 
         var code = steamGuard.GenerateAuthenticationCode(secret);
         if (code is null)
@@ -34,9 +43,9 @@ class Program
             return Status.TotpGenerationFailure;
         }
 
-        Console.WriteLine(code);
+        OutputTotpCode(code);
 
-        if (shouldSave)
+        if (args.Save)
         {
             var entropy = new byte[20];
             RandomNumberGenerator.Fill(entropy);
@@ -84,10 +93,16 @@ class Program
         var code = steamGuard.GenerateAuthenticationCode(secret);
         if (code is not null)
         {
-            Console.WriteLine(code);
+            OutputTotpCode(code);
             return Status.Success;
         }
 
         return Status.TotpGenerationFailure;
+    }
+
+    private static void OutputTotpCode(string code)
+    {
+        console.WriteLine(code, TextFormat.ForegroundGreen, TextFormat.BoldBright);
+        ClipboardService.SetText(code);
     }
 }

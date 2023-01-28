@@ -1,10 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Version>0.0.2</Version>
     <TargetFramework>net7.0</TargetFramework>
     <RootNamespace>SteamAuth</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <WarningsAsErrors>Nullable</WarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -12,11 +14,14 @@
     <PublishSingleFile>true</PublishSingleFile>
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishTrimmed>true</PublishTrimmed>
+    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CrossPlatformProtectedData" Version="1.0.3" />
+    <PackageReference Include="Ookii.CommandLine" Version="3.0.0" />
     <PackageReference Include="SteamGuard.TOTP" Version="1.0.0" />
+    <PackageReference Include="TextCopy" Version="6.2.1" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,8 @@
-namespace SteamAuth.Utils;
+namespace SteamAuth;
 enum Status
 {
     Success = 0,
+    InvalidArguments = -1,
     PlatformNotSupported = -2,
     ConfigFileNotFound = -3,
     EncryptionFailure = -4,
