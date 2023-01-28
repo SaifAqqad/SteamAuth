@@ -1,157 +1,93 @@
-﻿using System.Security.Cryptography;
-using System.Text.Json.Nodes;
-using Steam = SteamGuard.TOTP;
+﻿using System.Text.Json.Nodes;
+using SteamGuardTotp = SteamGuard.TOTP.SteamGuard;
 using SteamAuth.Utils;
-using System.Text;
+using System.Security.Cryptography;
 
-const string STEAMGUARD_FILE = "steamguard.json";
+namespace SteamAuth;
 
-if (!OperatingSystem.IsWindows())
+class Program
 {
-    Console.Error.WriteLine("This program only works on Windows");
-    return (int)Error.PlatformNotSupported;
-}
+    const string STEAMGUARD_FILE = "steamauth.json";
+    private static readonly SteamGuardTotp steamGuard = new();
+    private static readonly string steamGuardPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, STEAMGUARD_FILE);
 
-var steamGuard = new Steam.SteamGuard();
-
-if (args.Length > 0)
-{
-    return processArgs();
-}
-
-return processFile();
-
-
-int processArgs()
-{
-    var secret = args[0];
-    var shouldSave = args.Length > 1 && args[1].Contains("-s", StringComparison.InvariantCultureIgnoreCase);
-
-    var code = steamGuard.GenerateAuthenticationCode(secret);
-    Console.WriteLine(code ?? "Failed to generate code");
-
-    if (code is null)
+    private static int Main(string[] args)
     {
-        return (int)Error.GenerationFailure;
-    }
+        var result = args.Length == 0 ? ProcessFile() : ProcessArgs(args);
 
-    if (shouldSave)
-    {
-        var entropy = new byte[20];
-        RandomNumberGenerator.Fill(entropy);
-
-        var json = new JsonObject
+        if (result != Status.Success)
         {
-            ["encryptedSecret"] = secret.ToBytes()?.Protect(entropy)?.ToBase64(),
-            ["entropy"] = entropy.ToBase64()
-        };
-
-        if (json["encryptedSecret"] is null || json["entropy"] is null)
-        {
-            Console.Error.WriteLine("Failed to encrypt secret");
-            return (int)Error.EncryptionFailure;
+            Console.Error.WriteLine(result.GetMessage());
         }
 
-        File.WriteAllText(STEAMGUARD_FILE, json.ToString());
-    }
-    return 0;
-}
-
-int processFile()
-{
-    if (!File.Exists(STEAMGUARD_FILE))
-    {
-        Console.Error.WriteLine("SteamGuard file not found");
-        return (int)Error.ConfigFileNotFound;
+        return (int)result;
     }
 
-    var json = JsonNode.Parse(File.ReadAllText(STEAMGUARD_FILE));
-    if (json is null or not JsonObject)
+    private static Status ProcessArgs(string[] args)
     {
-        Console.Error.WriteLine("SteamGuard file is not valid");
-        return (int)Error.ConfigFileNotFound;
-    }
+        var secret = args[0];
+        var shouldSave = args.Length > 1 && args[1].Contains("-s", StringComparison.InvariantCultureIgnoreCase);
 
-    var entropy = json["entropy"]!.GetValue<string>();
-    var encryptedSecret = json["encryptedSecret"]!.GetValue<string>();
-
-    var secret = encryptedSecret.FromBase64()?.Unprotect(entropy.FromBase64()!)?.ToStringUtf();
-
-    if (secret is null)
-    {
-        Console.Error.WriteLine("Failed to decrypt secret");
-        return (int)Error.DecryptionFailure;
-    }
-
-    var code = steamGuard.GenerateAuthenticationCode(secret);
-
-    Console.WriteLine(code ?? "Failed to generate code");
-    return code is null ? (int)Error.GenerationFailure : 0;
-}
-
-namespace SteamAuth.Utils
-{
-    enum Error
-    {
-        PlatformNotSupported = -2,
-        ConfigFileNotFound = -3,
-        EncryptionFailure = -4,
-        DecryptionFailure = -5,
-        GenerationFailure = -6,
-    }
-
-    public static class Extensions
-    {
-        public static byte[]? Protect(this byte[] data, byte[] s_additionalEntropy)
+        var code = steamGuard.GenerateAuthenticationCode(secret);
+        if (code is null)
         {
-            try
+            return Status.TotpGenerationFailure;
+        }
+
+        Console.WriteLine(code);
+
+        if (shouldSave)
+        {
+            var entropy = new byte[20];
+            RandomNumberGenerator.Fill(entropy);
+
+            var json = new JsonObject
             {
-                // Encrypt the data using DataProtectionScope.CurrentUser. The result can be decrypted
-                // only by the same current user.
-                return ProtectedData.Protect(data, s_additionalEntropy, DataProtectionScope.CurrentUser);
-            }
-            catch (CryptographicException e)
+                ["encryptedSecret"] = secret.ToBytes()?.Protect(entropy)?.ToBase64(),
+                ["entropy"] = entropy.ToBase64()
+            };
+
+            if (json["encryptedSecret"] is null || json["entropy"] is null)
             {
-                Console.WriteLine("Data was not encrypted. An error occurred.");
-                Console.WriteLine(e.ToString());
-                return null;
+                return Status.EncryptionFailure;
             }
+
+            File.WriteAllText(steamGuardPath, json.ToString());
         }
 
-        public static byte[]? Unprotect(this byte[] data, byte[] s_additionalEntropy)
+        return Status.Success;
+    }
+
+    private static Status ProcessFile()
+    {
+        if (!File.Exists(steamGuardPath))
         {
-            try
-            {
-                //Decrypt the data using DataProtectionScope.CurrentUser.
-                return ProtectedData.Unprotect(data, s_additionalEntropy, DataProtectionScope.CurrentUser);
-            }
-            catch (CryptographicException e)
-            {
-                Console.WriteLine("Data was not decrypted. An error occurred.");
-                Console.WriteLine(e.ToString());
-                return null;
-            }
+            return Status.ConfigFileNotFound;
         }
 
-        public static byte[]? ToBytes(this string str)
+        var json = JsonNode.Parse(File.ReadAllText(steamGuardPath));
+        if (json is null or not JsonObject)
         {
-            return Encoding.UTF8.GetBytes(str);
+            return Status.ConfigFileNotFound;
         }
 
-        public static string? ToStringUtf(this byte[] bytes)
+        var entropy = json["entropy"]!.GetValue<string>();
+        var encryptedSecret = json["encryptedSecret"]!.GetValue<string>();
+
+        var secret = encryptedSecret.FromBase64()?.Unprotect(entropy.FromBase64()!)?.ToStringUtf();
+
+        if (secret is null)
         {
-            return Encoding.UTF8.GetString(bytes);
+            return Status.DecryptionFailure;
         }
 
-        public static string? ToBase64(this byte[] bytes)
+        var code = steamGuard.GenerateAuthenticationCode(secret);
+        if (code is not null)
         {
-            return Convert.ToBase64String(bytes);
+            Console.WriteLine(code);
+            return Status.Success;
         }
 
-        public static byte[]? FromBase64(this string str)
-        {
-            return Convert.FromBase64String(str);
-        }
-
+        return Status.TotpGenerationFailure;
     }
 }
