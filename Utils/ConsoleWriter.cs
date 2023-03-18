@@ -4,13 +4,13 @@ namespace SteamAuth.Utils
 {
     public class ConsoleWriter : IDisposable
     {
-        private readonly VirtualTerminalSupport virtualTerminal;
+        private readonly VirtualTerminalSupport _virtualTerminal;
         private readonly bool _formatSupported = false;
 
         public ConsoleWriter()
         {
-            virtualTerminal = VirtualTerminal.EnableColor(StandardStream.Output);
-            _formatSupported = virtualTerminal.IsSupported;
+            _virtualTerminal = VirtualTerminal.EnableColor(StandardStream.Output);
+            _formatSupported = _virtualTerminal.IsSupported;
         }
 
         public void Write(string text, params string[] formats)
@@ -35,7 +35,7 @@ namespace SteamAuth.Utils
 
         public void Dispose()
         {
-            virtualTerminal.Dispose();
+            _virtualTerminal.Dispose();
             GC.SuppressFinalize(this);
         }
     }

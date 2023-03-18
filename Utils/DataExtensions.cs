@@ -4,15 +4,15 @@ using ProtectedData = CrossPlatformProtectedData.ProtectedData;
 
 namespace SteamAuth.Utils;
 
-static class DataExtensions
+public static class DataExtensions
 {
-    public static byte[]? Protect(this byte[] data, byte[] s_additionalEntropy)
+    public static byte[]? Protect(this byte[] data, byte[] additionalEntropy)
     {
         try
         {
             // Encrypt the data using DataProtectionScope.CurrentUser.
             // The result can be decrypted only by the same current user.
-            return ProtectedData.Protect(data, s_additionalEntropy, DataProtectionScope.CurrentUser);
+            return ProtectedData.Protect(data, additionalEntropy, DataProtectionScope.CurrentUser);
         }
         catch (CryptographicException e)
         {
@@ -22,12 +22,12 @@ static class DataExtensions
         }
     }
 
-    public static byte[]? Unprotect(this byte[] data, byte[] s_additionalEntropy)
+    public static byte[]? Unprotect(this byte[] data, byte[] additionalEntropy)
     {
         try
         {
             //Decrypt the data using DataProtectionScope.CurrentUser.
-            return ProtectedData.Unprotect(data, s_additionalEntropy, DataProtectionScope.CurrentUser);
+            return ProtectedData.Unprotect(data, additionalEntropy, DataProtectionScope.CurrentUser);
         }
         catch (CryptographicException e)
         {
@@ -37,22 +37,22 @@ static class DataExtensions
         }
     }
 
-    public static byte[]? ToBytes(this string str)
+    public static byte[] ToBytes(this string str)
     {
         return Encoding.UTF8.GetBytes(str);
     }
 
-    public static string? ToStringUtf(this byte[] bytes)
+    public static string ToStringUtf(this byte[] bytes)
     {
         return Encoding.UTF8.GetString(bytes);
     }
 
-    public static string? ToBase64(this byte[] bytes)
+    public static string ToBase64(this byte[] bytes)
     {
         return Convert.ToBase64String(bytes);
     }
 
-    public static byte[]? FromBase64(this string str)
+    public static byte[] FromBase64(this string str)
     {
         return Convert.FromBase64String(str);
     }
